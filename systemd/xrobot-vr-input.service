@@ -1,0 +1,17 @@
+[Unit]
+Description=XRoboToolkit Complete VR Input Publisher
+Wants=xrobotoolkit-pc.service
+After=xrobotoolkit-pc.service
+
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT_ROOT@
+Environment=PYTHONUNBUFFERED=1
+ExecStart="@VENV_BIN@/xrobot-vr-publisher" --source xrt --no-start-service
+Restart=always
+RestartSec=2
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xrobot-vr-stream"
+version = "0.1.0"
+description = "Shared XRoboToolkit VR input publisher and client."
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  "msgpack>=1.1.0",
+  "numpy>=2.0",
+  "pyzmq>=27.0.0",
+]
+
+[project.optional-dependencies]
+service = [
+  "xrobotoolkit-sdk",
+]
+
+[project.scripts]
+xrobot-vr-publisher = "xrobot_vr_stream.publisher:main"
+xrobot-vr-health = "xrobot_vr_stream.health:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.uv.sources]
+xrobotoolkit-sdk = { path = "../vr/XRoboToolkit-PC-Service-Pybind" }

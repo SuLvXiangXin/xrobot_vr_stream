@@ -1,0 +1,16 @@
+[Unit]
+Description=XRoboToolkit PC Service
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=@PROJECT_ROOT@
+Environment="XROBOTOOLKIT_PC_SERVICE_DIR=@XRT_SERVICE_DIR@"
+ExecStart=/usr/bin/bash "@XRT_SCRIPT@" run
+Restart=always
+RestartSec=2
+TimeoutStopSec=10
+KillMode=control-group
+
+[Install]
+WantedBy=default.target
