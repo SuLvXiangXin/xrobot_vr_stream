@@ -7,7 +7,7 @@ name = "xrobot-vr-stream"
 version = "0.1.0"
 description = "Shared XRoboToolkit VR input publisher and client."
 readme = "README.md"
-requires-python = ">=3.11,<3.12"
+requires-python = ">=3.10,<3.12"
 dependencies = [
   "msgpack>=1.1.0",
   "numpy>=2.0",
@@ -28,3 +28,8 @@ where = ["src"]
 
 [tool.uv.sources]
 xrobotoolkit-sdk = { path = "../vr/XRoboToolkit-PC-Service-Pybind" }
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]

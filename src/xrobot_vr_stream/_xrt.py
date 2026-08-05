@@ -27,6 +27,7 @@ DEFAULT_XRT_SERVICE_SCRIPT = (
   / "scripts"
   / "start_xrt_service.sh"
 )
+TRACKING_STALL_TIMEOUT_S = 1.0
 
 
 class XrtFrameSource:
@@ -34,6 +35,8 @@ class XrtFrameSource:
     self._start_service = bool(start_service)
     self._xrt = None
     self._trace_calls = os.environ.get("XROBOT_VR_TRACE_CALLS", "") == "1"
+    self._last_tracking_timestamp_ns: int | None = None
+    self._last_tracking_change_monotonic: float | None = None
 
   def start(self) -> None:
     if self._xrt is not None:
@@ -55,8 +58,10 @@ class XrtFrameSource:
   def read(self) -> VrInputFrame:
     if self._xrt is None:
       self.start()
+    timestamp_ns = _optional_int(self._call("get_time_stamp_ns"))
+    self._check_tracking_liveness(timestamp_ns)
     return VrInputFrame(
-      timestamp_ns=_optional_int(self._call("get_time_stamp_ns")),
+      timestamp_ns=timestamp_ns,
       analog=VrAnalogFrame(
         left_axis=_optional_axis2(self._call("get_left_axis")),
         right_axis=_optional_axis2(self._call("get_right_axis")),
@@ -113,28 +118,26 @@ class XrtFrameSource:
     self._xrt = None
 
   def _read_body(self) -> VrBodyFrame:
-    xrt = self._require_xrt()
-    atomic_fn = getattr(xrt, "get_body_state", None)
-    if atomic_fn is None:
-      raise RuntimeError(
-        "xrobotoolkit_sdk must provide atomic get_body_state()"
-      )
-    snapshot = self._timed_call("get_body_state", atomic_fn)
-    if not isinstance(snapshot, dict):
-      raise TypeError("get_body_state must return a dict")
-    available = bool(snapshot.get("available", False))
+    available = bool(self._call("is_body_data_available"))
+    timestamps = _optional_array(self._call("get_body_joints_timestamp"))
+    timestamp_ns = (
+      int(np.max(timestamps)) if timestamps is not None else None
+    )
+    available = bool(available and timestamp_ns is not None and timestamp_ns > 0)
     return VrBodyFrame(
       available=available,
-      timestamp_ns=_optional_int(snapshot.get("timestamp_ns")),
+      timestamp_ns=timestamp_ns if available else None,
       received_time_ns=time.time_ns(),
       joints_pose=(
-        _optional_array(snapshot.get("joints_pose")) if available else None
+        _optional_array(self._call("get_body_joints_pose"))
+        if available else None
       ),
       joints_velocity=(
-        _optional_array(snapshot.get("joints_velocity")) if available else None
+        _optional_array(self._call("get_body_joints_velocity"))
+        if available else None
       ),
       joints_acceleration=(
-        _optional_array(snapshot.get("joints_acceleration"))
+        _optional_array(self._call("get_body_joints_acceleration"))
         if available
         else None
       ),
@@ -142,6 +145,23 @@ class XrtFrameSource:
       coordinate_system="y_up",
       pose_convention=XROBOT_BODY_POSE_CONVENTION,
     )
+
+  def _check_tracking_liveness(self, timestamp_ns: int | None) -> None:
+    if timestamp_ns is None or timestamp_ns <= 0:
+      return
+    now = time.monotonic()
+    if timestamp_ns != self._last_tracking_timestamp_ns:
+      self._last_tracking_timestamp_ns = timestamp_ns
+      self._last_tracking_change_monotonic = now
+      return
+    if (
+      self._last_tracking_change_monotonic is not None
+      and now - self._last_tracking_change_monotonic
+      > TRACKING_STALL_TIMEOUT_S
+    ):
+      raise RuntimeError(
+        "XRT Tracking stream stalled or was preempted by another xrt.init()"
+      )
 
   def _call(self, name: str):
     fn = getattr(self._require_xrt(), name, None)

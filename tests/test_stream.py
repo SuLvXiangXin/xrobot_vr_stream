@@ -22,9 +22,25 @@ from xrobot_vr_stream import (
   unpack_vr_frame,
 )
 import xrobot_vr_stream.publisher as publisher
+from xrobot_vr_stream._xrt import XrtFrameSource
 
 
 class VrStreamTest(unittest.TestCase):
+  def test_xrt_source_detects_preempted_tracking_stream(self) -> None:
+    class _Xrt:
+      def get_time_stamp_ns(self):
+        return 123
+
+    source = XrtFrameSource(start_service=False)
+    source._xrt = _Xrt()
+    with mock.patch(
+      "xrobot_vr_stream._xrt.time.monotonic",
+      side_effect=(10.0, 11.1),
+    ):
+      source.read()
+      with self.assertRaisesRegex(RuntimeError, "stalled or was preempted"):
+        source.read()
+
   def test_protocol_round_trip_and_fanout(self) -> None:
     body_pose = np.zeros((24, 7), dtype=np.float32)
     body_pose[:, 6] = 1.0

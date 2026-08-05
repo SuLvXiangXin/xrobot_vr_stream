@@ -3,6 +3,8 @@
 Host-level XRoboToolkit input service shared by robot projects. It is the only
 XRoboToolkit SDK client and publishes complete, versioned VR frames on ZMQ port
 `5592`. Robot projects subscribe to the stream and do not start XRoboToolkit.
+If another process calls `xrt.init()` and preempts the SDK feedback stream, the
+publisher detects the stalled Tracking timestamp and reconnects automatically.
 The service extra builds `xrobottoolkit-sdk` non-editably from a sibling SDK
 checkout into this project's dedicated `.venv`.
 
@@ -17,9 +19,8 @@ workspace/
     └── XRoboToolkit-PC-Service-Pybind/
 ```
 
-The SDK checkout must provide its Python package metadata and the atomic
-`get_body_state()` binding used by the publisher. Then install the dedicated
-service environment:
+The SDK checkout must provide its Python package metadata. Then install the
+dedicated service environment:
 
 ```bash
 cd workspace/xrobot_vr_stream

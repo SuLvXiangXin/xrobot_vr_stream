@@ -140,7 +140,7 @@ def _parse_args() -> argparse.Namespace:
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument("--source", choices=("xrt", "synthetic"), default="xrt")
   parser.add_argument("--bind", default="tcp://*:5592")
-  parser.add_argument("--fps", type=float, default=60.0)
+  parser.add_argument("--fps", type=float, default=30.0)
   parser.add_argument("--frames", type=int, default=0)
   parser.add_argument(
     "--start-service",
